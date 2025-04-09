@@ -10,5 +10,5 @@ spring:
       # 최초 세팅에만 update를 쓰고, 그 이후는 none만 쓰기도 함.
   datasource:
     url: ${MYSQL_URL}
-    username: ${MYSQL_USERNAME}
+    username: ${MYSQL_USER}
     password: ${MYSQL_PASSWORD}

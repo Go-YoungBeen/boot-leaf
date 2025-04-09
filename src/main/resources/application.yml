@@ -8,7 +8,7 @@ spring:
   #      suffix: .jsp
   profiles:
     # 기본 실행 지정
-    active: dev
+    active: prod
   # JPA
   datasource:
     # JPA를 쓰는 경우에는 상대적으로 DB 종류의 구속을 안 받으려는 의미도 있음
