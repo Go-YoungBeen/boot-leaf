@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>(웹소켓 구현못한)익명 소통방</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gradient-start: #7F00FF;
+            --gradient-end: #E100FF;
+            --dark-bg: #0F0F1A;
+            --card-bg: rgba(30, 30, 46, 0.7);
+            --text-primary: #FFFFFF;
+            --text-secondary: #B8B8D0;
+            --accent: #00E8FC;
+            --success: #00FFB3;
+            --warning: #FFAF4D;
+            --danger: #FF4D6D;
+            --border-radius: 16px;
+            --blur-amount: 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image:
+                    radial-gradient(circle at 20% 70%, rgba(127, 0, 255, 0.15) 0%, transparent 40%),
+                    radial-gradient(circle at 80% 20%, rgba(225, 0, 255, 0.15) 0%, transparent 40%);
+            overflow-x: hidden;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+            opacity: 0.3;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-20px) translateX(10px); }
+            50% { transform: translateY(0) translateX(20px); }
+            75% { transform: translateY(20px) translateX(10px); }
+            100% { transform: translateY(0) translateX(0); }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(var(--blur-amount));
+            -webkit-backdrop-filter: blur(var(--blur-amount));
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 700;
+            font-size: 28px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 30px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 179, 0.1);
+            border: 1px solid rgba(0, 255, 179, 0.3);
+            color: var(--success);
+        }
+
+        .alert-danger {
+            background: rgba(255, 77, 109, 0.1);
+            border: 1px solid rgba(255, 77, 109, 0.3);
+            color: var(--danger);
+        }
+
+        .create-form {
+            display: flex;
+            margin-bottom: 30px;
+            gap: 10px;
+        }
+
+        .input-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .input-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: var(--border-radius);
+            padding: 2px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: rgba(15, 15, 26, 0.5);
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            padding: 15px 20px;
+            font-size: 16px;
+            border-radius: var(--border-radius);
+            font-family: inherit;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(184, 184, 208, 0.6);
+        }
+
+        button {
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-weight: 600;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(127, 0, 255, 0.3);
+        }
+
+        .room-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .room-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .room-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-3px);
+        }
+
+        .room-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            flex: 1;
+            transition: color 0.2s;
+        }
+
+        .room-link:hover {
+            color: var(--accent);
+        }
+
+        .room-date {
+            color: var(--text-secondary);
+            margin: 0 15px;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .delete-btn {
+            background: rgba(255, 77, 109, 0.2);
+            color: var(--danger);
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 77, 109, 0.3);
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 77, 109, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.2);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* 반응형 처리 */
+        @media (max-width: 640px) {
+            body {
+                padding: 15px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .create-form {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- Particle Background -->
+<div class="particles">
+    <!-- Particles will be added with JavaScript -->
+</div>
+
+<div class="container">
+    <h1>(아직 웹소켓 구현 못한)익명 소통방</h1>
+
+    <!-- 메시지 출력 -->
+    <div th:if="${message}" class="alert alert-success">
+        <p th:text="${message}"></p>
+    </div>
+    <div th:if="${error}" class="alert alert-danger">
+        <p th:text="${error}"></p>
+    </div>
+
+    <!-- 방 생성 폼 -->
+    <form th:action="@{/rooms}" method="post" class="create-form">
+        <div class="input-container">
+            <input type="text" name="title" placeholder="방 제목 입력" required>
+        </div>
+        <button type="submit">방 만들기</button>
+    </form>
+
+    <!-- 방 목록 -->
+    <ul class="room-list">
+        <li th:each="room : ${rooms}" class="room-item">
+            <a class="room-link" th:href="@{'/rooms/' + ${room.id}}" th:text="${room.title}"></a>
+            <small class="room-date" th:text="${#temporals.format(room.createdAt, 'yyyy-MM-dd HH:mm')}"></small>
+
+            <!-- 삭제 폼 -->
+            <form th:action="@{'/rooms/' + ${room.id} + '/delete'}" method="post">
+                <button type="submit" class="delete-btn" onclick="return confirm('정말 삭제할까요?')">삭제</button>
+            </form>
+        </li>
+    </ul>
+
+    <div class="footer">
+        <p>© 2025 익명 소통방 - 안전하고 익명으로 소통하세요</p>
+    </div>
+</div>
+
+<script>
+    // Create particle background
+    const particlesContainer = document.querySelector('.particles');
+
+    for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+
+        // Random position
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+
+        // Random size
+        const size = Math.random() * 3 + 1;
+
+        // Random animation duration and delay
+        const duration = Math.random() * 20 + 10;
+        const delay = Math.random() * 10;
+
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${x}%`;
+        particle.style.top = `${y}%`;
+        particle.style.animationDuration = `${duration}s`;
+        particle.style.animationDelay = `${delay}s`;
+
+        particlesContainer.appendChild(particle);
+    }
+</script>
+</body>
+</html>
